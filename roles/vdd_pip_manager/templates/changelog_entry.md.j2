@@ -1,0 +1,12 @@
+## [{{ config_global.release_version }}] - {{ config_global.release_date }}
+
+### Python Package Updates
+{% if config_global.dependencies is defined %}
+{% for dep in config_global.dependencies %}
+- Updated {{ dep.name }} to version {{ dep.version }}
+{% endfor %}
+{% endif %}
+
+{% if config_global.python_version is defined %}
+- Updated Python version to {{ config_global.python_version }}
+{% endif %} 

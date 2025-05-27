@@ -1,0 +1,13 @@
+{% if config_global.python_version is defined %}
+python=={{ config_global.python_version }}
+{% endif %}
+
+{% if config_global.dependencies is defined %}
+{% for dep in config_global.dependencies %}
+{% if dep.version is defined %}
+{{ dep.name }}=={{ dep.version }}
+{% else %}
+{{ dep.name }}
+{% endif %}
+{% endfor %}
+{% endif %} 

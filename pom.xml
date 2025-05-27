@@ -8,7 +8,7 @@
   <name>ParseTom</name>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>18</maven.compiler.source>
+    <maven.compiler.source>19</maven.compiler.source>
     <maven.compiler.target>18</maven.compiler.target>
     <!-- For SonarQube -->
     <sonar.tests>src/test/java</sonar.tests>

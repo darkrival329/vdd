@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.2.8] - 2025-05-27
+
+### Summary
+- Updated 1 dependencies
+- Updated 1 build plugins
+- Updated 2 properties
+
+### Dependencies
+- Updated `database-interface` to version `1.0.12-SNAPSHOT`
+
+### Build Plugins
+- Updated `maven-compiler-plugin` to version `3.12.0`
+
+### Properties
+- Updated `maven.compiler.source` to `19`
+- Updated `maven.compiler.target` to `18`
+
+[1.2.8]: /-/compare/v1.2.8...HEAD 
+
 ## [1.2.7] - 2025-05-27
 
 ### Summary
@@ -25,4 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.2.7]: /-/compare/v1.2.7...HEAD 
 
  
+ 
+ 
+ 
+ 
+
+ 
+
  
