@@ -25,47 +25,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.2.7]: /-/compare/v1.2.7...HEAD
 
 
-## [1.2.6] - 2025-05-27
-
-### Summary
-- Updated 1 dependencies
-- Updated 1 build plugins
-- Updated 2 properties
-
-### Dependencies
-- Updated `database-interface` to version `1.0.14-SNAPSHOT`
-
-### Build Plugins
-- Updated `maven-compiler-plugin` to version `3.12.0`
-
-### Properties
-- Updated `maven.compiler.source` to `17`
-- Updated `maven.compiler.target` to `18`
-
-[1.2.6]: https://github.com/yourusername/yourrepo/compare/v1.2.6...HEAD
-
-
-## [1.2.5] - 2025-05-27
-
-### Summary
-- Updated 1 dependencies
-- Updated 1 build plugins
-- Updated 2 properties
-
-### Dependencies
-- Updated `database-interface` to version `1.0.14-SNAPSHOT`
-
-### Build Plugins
-- Updated `maven-compiler-plugin` to version `3.12.0`
-
-### Properties
-- Updated `maven.compiler.source` to `17`
-- Updated `maven.compiler.target` to `18`
-
-[1.2.5]: https://github.com/yourusername/yourrepo/compare/v1.2.5...HEAD
-
-
-
-
 
 
