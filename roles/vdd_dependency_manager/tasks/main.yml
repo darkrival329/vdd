@@ -1,0 +1,191 @@
+---
+- name: Validate required variables
+  fail:
+    msg: "{{ item }} is not defined in dependency_config.json"
+  when: "{{ item }} is not defined"
+  loop:
+    - global.properties
+    - global.dependencies
+    - global.build_plugins
+    - global.release_version
+    - global.release_date
+
+- name: Fail if pom.xml does not exist
+  stat:
+    path: "{{ pom_file }}"
+  register: pom_stat
+
+- name: Abort if pom.xml does not exist
+  fail:
+    msg: "{{ pom_file }} does not exist"
+  when: not pom_stat.stat.exists
+
+- name: Check current property values
+  community.general.xml:
+    path: "{{ pom_file }}"
+    xpath: "//pom:properties/pom:{{ item.key }}"
+    namespaces:
+      pom: "{{ pom_ns }}"
+  register: current_properties
+  loop: "{{ global.properties | dict2items }}"
+  when: global.properties is defined
+
+- name: Debug property changes
+  debug:
+    msg: "Updating property {{ item.key }} from {{ current_properties.results[loop_index].value | default('not set') }} to {{ item.value }} in pom.xml"
+  loop: "{{ global.properties | dict2items }}"
+  loop_control:
+    index_var: loop_index
+  when: debug_mode | bool and global.properties is defined
+
+- name: Update properties in pom.xml from config
+  community.general.xml:
+    path: "{{ pom_file }}"
+    xpath: "//pom:properties/pom:{{ item.key }}"
+    namespaces:
+      pom: "{{ pom_ns }}"
+    value: "{{ item.value }}"
+    pretty_print: true
+  loop: "{{ global.properties | dict2items }}"
+  when:
+    - global.properties is defined
+    - current_properties.results[loop_index].value is defined and current_properties.results[loop_index].value != item.value or current_properties.results[loop_index].value is not defined
+  loop_control:
+    index_var: loop_index
+
+- name: Check current dependency versions
+  community.general.xml:
+    path: "{{ pom_file }}"
+    xpath: "//pom:dependency[pom:artifactId='{{ item.artifactId }}']/pom:version"
+    namespaces:
+      pom: "{{ pom_ns }}"
+  register: current_dependencies
+  loop: "{{ global.dependencies }}"
+  when:
+    - global.dependencies is defined
+    - item.artifactId is defined
+    - item.version is defined
+
+- name: Debug dependency changes
+  debug:
+    msg: "Updating dependency {{ item.artifactId }} from {{ current_dependencies.results[loop_index].value | default('not set') }} to {{ item.version }} in pom.xml"
+  loop: "{{ global.dependencies }}"
+  loop_control:
+    index_var: loop_index
+  when: debug_mode | bool and global.dependencies is defined and item.artifactId is defined and item.version is defined
+
+- name: Update dependency versions in pom.xml
+  community.general.xml:
+    path: "{{ pom_file }}"
+    xpath: "//pom:dependency[pom:artifactId='{{ item.artifactId }}']/pom:version"
+    namespaces:
+      pom: "{{ pom_ns }}"
+    value: "{{ item.version }}"
+    pretty_print: true
+  loop: "{{ global.dependencies }}"
+  when:
+    - global.dependencies is defined
+    - item.artifactId is defined
+    - item.version is defined
+    - current_dependencies.results[loop_index].value is defined and current_dependencies.results[loop_index].value != item.version or current_dependencies.results[loop_index].value is not defined
+  loop_control:
+    index_var: loop_index
+
+- name: Check current plugin versions
+  community.general.xml:
+    path: "{{ pom_file }}"
+    xpath: "//pom:plugin[pom:artifactId='{{ item.artifactId }}']/pom:version"
+    namespaces:
+      pom: "{{ pom_ns }}"
+  register: current_plugins
+  loop: "{{ global.build_plugins }}"
+  when:
+    - global.build_plugins is defined
+    - item.artifactId is defined
+    - item.version is defined
+
+- name: Debug plugin changes
+  debug:
+    msg: "Updating plugin {{ item.artifactId }} from {{ current_plugins.results[loop_index].value | default('not set') }} to {{ item.version }} in pom.xml"
+  loop: "{{ global.build_plugins }}"
+  loop_control:
+    index_var: loop_index
+  when: debug_mode | bool and global.build_plugins is defined and item.artifactId is defined and item.version is defined
+
+- name: Update build plugin versions in pom.xml
+  community.general.xml:
+    path: "{{ pom_file }}"
+    xpath: "//pom:plugin[pom:artifactId='{{ item.artifactId }}']/pom:version"
+    namespaces:
+      pom: "{{ pom_ns }}"
+    value: "{{ item.version }}"
+    pretty_print: true
+  loop: "{{ global.build_plugins }}"
+  when:
+    - global.build_plugins is defined
+    - item.artifactId is defined
+    - item.version is defined
+    - current_plugins.results[loop_index].value is defined and current_plugins.results[loop_index].value != item.version or current_plugins.results[loop_index].value is not defined
+  loop_control:
+    index_var: loop_index
+
+- name: Check for existing changelog entry
+  stat:
+    path: "{{ changelog_path }}"
+  register: changelog_stat
+
+- name: Backup existing changelog
+  copy:
+    src: "{{ changelog_path }}"
+    dest: "{{ changelog_path }}.bak"
+    remote_src: yes
+  when: changelog_stat.stat.exists
+
+- name: Read existing changelog
+  slurp:
+    path: "{{ changelog_path }}"
+  register: changelog_content
+  when: changelog_stat.stat.exists
+
+- name: Generate new changelog entry
+  template:
+    src: changelog_entry.md.j2
+    dest: "{{ playbook_dir }}/.changelog_entry.md"
+  register: new_entry_file
+  when:
+    - global.release_version is defined
+    - global.release_date is defined
+    - not changelog_stat.stat.exists or 
+      (changelog_stat.stat.exists and 
+       global.release_version not in changelog_content.content | b64decode)
+
+- name: Read new changelog entry
+  slurp:
+    path: "{{ playbook_dir }}/.changelog_entry.md"
+  register: new_entry_content
+  when: new_entry_file is changed
+
+- name: Set new entry fact
+  set_fact:
+    new_entry: "{{ new_entry_content.content | b64decode }}"
+  when: new_entry_file is changed
+
+- name: Debug new changelog entry
+  debug:
+    msg: "{{ new_entry }}"
+  when: debug_mode | bool and new_entry is defined
+
+- name: Create or update changelog
+  template:
+    src: changelog.md.j2
+    dest: "{{ changelog_path }}"
+    force: yes
+  when:
+    - global.release_version is defined
+    - global.release_date is defined
+
+- name: Clean up temporary changelog entry
+  file:
+    path: "{{ playbook_dir }}/.changelog_entry.md"
+    state: absent
+  when: new_entry_file is changed 

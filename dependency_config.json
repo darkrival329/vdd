@@ -5,7 +5,7 @@
       "dependencies": [
         {
           "artifactId": "database-interface",
-          "version": "1.0.14-SNAPSHOT"
+          "version": "1.0.12-SNAPSHOT"
         }
       ],
       "properties": {
