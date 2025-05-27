@@ -31,3 +31,19 @@
         pretty_print: true
       loop: "{{ global.dependencies }}"
       when: global.dependencies is defined
+    
+    - name: Format changelog content
+      set_fact:
+        changelog_entry: |
+          ## [{{ global.release_version }}] - {{ global.release_date }}
+          {% for dep in global.dependencies %}
+          - Bumped `{{ dep.artifactId }}` to `{{ dep.version }}`
+          {% endfor %}
+       
+
+    - name: Prepend changelog entry
+      blockinfile:
+        path: "./CHANGELOG.md"
+        block: "{{ changelog_entry }}"
+        insertbefore: BOF
+        marker: ""

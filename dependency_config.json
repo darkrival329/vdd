@@ -1,5 +1,7 @@
 {
     "global": {
+      "release_version": "1.2.3",
+      "release_date": "2025-05-27",
       "dependencies": [
         {
           "artifactId": "database-interface",
