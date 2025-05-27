@@ -8,8 +8,19 @@
   vars:
     pom_file: "./pom.xml"
     pom_ns: "http://maven.apache.org/POM/4.0.0"
+    debug_mode: false
 
   tasks:
+    - name: Fail if pom.xml does not exist
+      stat:
+        path: "{{ pom_file }}"
+      register: pom_stat
+
+    - name: Abort if pom.xml does not exist
+      fail:
+        msg: "{{ pom_file }} does not exist"
+      when: not pom_stat.stat.exists
+
     - name: Update properties in pom.xml from config
       community.general.xml:
         path: "{{ pom_file }}"
@@ -19,7 +30,8 @@
         value: "{{ item.value }}"
         pretty_print: true
       loop: "{{ global.properties | dict2items }}"
-      when: global.properties is defined
+      when:
+        - global.properties is defined
 
     - name: Update dependency versions in pom.xml
       community.general.xml:
@@ -30,20 +42,21 @@
         value: "{{ item.version }}"
         pretty_print: true
       loop: "{{ global.dependencies }}"
-      when: global.dependencies is defined
-    
-    - name: Format changelog content
-      set_fact:
-        changelog_entry: |
-          ## [{{ global.release_version }}] - {{ global.release_date }}
-          {% for dep in global.dependencies %}
-          - Bumped `{{ dep.artifactId }}` to `{{ dep.version }}`
-          {% endfor %}
-       
+      when:
+        - global.dependencies is defined
+        - item.artifactId is defined
+        - item.version is defined
 
-    - name: Prepend changelog entry
-      blockinfile:
-        path: "./CHANGELOG.md"
-        block: "{{ changelog_entry }}"
-        insertbefore: BOF
-        marker: ""
+    - name: Update build plugin versions in pom.xml
+      community.general.xml:
+        path: "{{ pom_file }}"
+        xpath: "//pom:plugin[pom:artifactId='{{ item.artifactId }}']/pom:version"
+        namespaces:
+          pom: "{{ pom_ns }}"
+        value: "{{ item.version }}"
+        pretty_print: true
+      loop: "{{ global.build_plugins }}"
+      when:
+        - global.build_plugins is defined
+        - item.artifactId is defined
+        - item.version is defined

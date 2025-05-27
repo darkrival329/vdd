@@ -5,12 +5,18 @@
       "dependencies": [
         {
           "artifactId": "database-interface",
-          "version": "1.0.14-SNAPSHOT"
+          "version": "1.0.13-SNAPSHOT"
         }
       ],
       "properties": {
         "maven.compiler.source": "12",
         "maven.compiler.target": "11"
-      }
+      },
+      "build_plugins": [
+        {
+          "artifactId": "maven-compiler-plugin",
+          "version": "3.12.0"
+        }
+      ]
     }
   }

@@ -1,15 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" 
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
-                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0                               http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.tom</groupId>
   <artifactId>parse-tmout</artifactId>
   <version>2.1.1-SNAPSHOT</version>
   <packaging>jar</packaging>
   <name>ParseTom</name>
-
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>12</maven.compiler.source>
@@ -23,16 +19,14 @@
     <sonar.junit.reportPaths>target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.exclusions>**/DatabaseAdapter.java,**/GdalAdapter.java,**/FootprintParameters.java,**/OpenCVAdapter.java</sonar.coverage.exclusions>
   </properties>
-
   <profiles>
     <!-- Define any Maven build profiles here -->
   </profiles>
-
   <dependencies>
     <dependency>
       <groupId>project_groupId</groupId>
       <artifactId>database-interface</artifactId>
-      <version>1.0.14-SNAPSHOT</version>
+      <version>1.0.13-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>project_groupId</groupId>
@@ -50,7 +44,6 @@
       <version>4.7.2-SNAPSHOT</version>
     </dependency>
   </dependencies>
-
   <build>
     <finalName>${project.artifactId}</finalName>
     <plugins>
@@ -59,11 +52,10 @@
         <artifactId>maven-resources-plugin</artifactId>
         <version>3.3.1</version>
       </plugin>
-
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.10.1</version>
+        <version>3.12.0</version>
         <dependencies>
           <dependency>
             <groupId>org.apache.maven.shared</groupId>
@@ -78,7 +70,6 @@
           </dependency>
         </dependencies>
       </plugin>
-
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
@@ -99,7 +90,6 @@
           </transformers>
         </configuration>
       </plugin>
-
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
