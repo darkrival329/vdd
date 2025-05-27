@@ -60,3 +60,84 @@
         - global.build_plugins is defined
         - item.artifactId is defined
         - item.version is defined
+
+    - name: Check for existing changelog entry
+      stat:
+        path: "CHANGELOG.md"
+      register: changelog_stat
+
+    - name: Read existing changelog
+      slurp:
+        path: "CHANGELOG.md"
+      register: changelog_content
+      when: changelog_stat.stat.exists
+
+    - name: Generate new changelog entry
+      set_fact:
+        new_entry: |
+          ## [{{ global.release_version }}] - {{ global.release_date }}
+
+          {% if global.dependencies | length > 0 or global.build_plugins | length > 0 or global.properties | length > 0 %}
+          ### Summary
+          {% if global.dependencies | length > 0 %}
+          - Updated {{ global.dependencies | length }} dependencies
+          {% endif %}
+          {% if global.build_plugins | length > 0 %}
+          - Updated {{ global.build_plugins | length }} build plugins
+          {% endif %}
+          {% if global.properties | length > 0 %}
+          - Updated {{ global.properties | length }} properties
+          {% endif %}
+          {% endif %}
+
+          {% if global.dependencies | length > 0 %}
+          ### Dependencies
+          {% for dep in global.dependencies %}
+          - Updated `{{ dep.artifactId }}` to version `{{ dep.version }}`
+          {% endfor %}
+          {% endif %}
+
+          {% if global.build_plugins | length > 0 %}
+          ### Build Plugins
+          {% for plugin in global.build_plugins %}
+          - Updated `{{ plugin.artifactId }}` to version `{{ plugin.version }}`
+          {% endfor %}
+          {% endif %}
+
+          {% if global.properties | length > 0 %}
+          ### Properties
+          {% for key, value in global.properties.items() %}
+          - Updated `{{ key }}` to `{{ value }}`
+          {% endfor %}
+          {% endif %}
+
+          [{{ global.release_version }}]: {{ lookup('env', 'CI_PROJECT_URL') }}/-/compare/v{{ global.release_version }}...HEAD
+      when:
+        - global.release_version is defined
+        - global.release_date is defined
+        - not changelog_stat.stat.exists or 
+          (changelog_stat.stat.exists and 
+           global.release_version not in changelog_content.content | b64decode)
+
+    - name: Create or update changelog
+      copy:
+        dest: "CHANGELOG.md"
+        content: |
+          # Changelog
+
+          All notable changes to this project will be documented in this file.
+
+          The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+          and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+          {% if new_entry is defined %}
+          {{ new_entry }}
+
+          {% endif %}
+          {% if changelog_stat.stat.exists %}
+          {{ changelog_content.content | b64decode | regex_replace('(?s)^# Changelog.*?Semantic Versioning.*?\n\n', '') | regex_replace('# BEGIN ANSIBLE MANAGED BLOCK.*?\n', '') | regex_replace('# END ANSIBLE MANAGED BLOCK.*?\n', '') }}
+          {% endif %}
+        force: yes
+      when:
+        - global.release_version is defined
+        - global.release_date is defined

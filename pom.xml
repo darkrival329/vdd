@@ -8,8 +8,8 @@
   <name>ParseTom</name>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>12</maven.compiler.source>
-    <maven.compiler.target>11</maven.compiler.target>
+    <maven.compiler.source>18</maven.compiler.source>
+    <maven.compiler.target>18</maven.compiler.target>
     <!-- For SonarQube -->
     <sonar.tests>src/test/java</sonar.tests>
     <sonar.sources>src/main/java</sonar.sources>
@@ -26,7 +26,7 @@
     <dependency>
       <groupId>project_groupId</groupId>
       <artifactId>database-interface</artifactId>
-      <version>1.0.13-SNAPSHOT</version>
+      <version>1.0.14-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>project_groupId</groupId>
