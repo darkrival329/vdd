@@ -1,0 +1,14 @@
+{
+    "global": {
+      "dependencies": [
+        {
+          "artifactId": "database-interface",
+          "version": "1.0.14-SNAPSHOT"
+        }
+      ],
+      "properties": {
+        "maven.compiler.source": "12",
+        "maven.compiler.target": "11"
+      }
+    }
+  }

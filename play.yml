@@ -1,0 +1,33 @@
+---
+- name: Categorize and report dependencies
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - dependency_config.json
+
+  vars:
+    pom_file: "./pom.xml"
+    pom_ns: "http://maven.apache.org/POM/4.0.0"
+
+  tasks:
+    - name: Update properties in pom.xml from config
+      community.general.xml:
+        path: "{{ pom_file }}"
+        xpath: "//pom:properties/pom:{{ item.key }}"
+        namespaces:
+          pom: "{{ pom_ns }}"
+        value: "{{ item.value }}"
+        pretty_print: true
+      loop: "{{ global.properties | dict2items }}"
+      when: global.properties is defined
+
+    - name: Update dependency versions in pom.xml
+      community.general.xml:
+        path: "{{ pom_file }}"
+        xpath: "//pom:dependency[pom:artifactId='{{ item.artifactId }}']/pom:version"
+        namespaces:
+          pom: "{{ pom_ns }}"
+        value: "{{ item.version }}"
+        pretty_print: true
+      loop: "{{ global.dependencies }}"
+      when: global.dependencies is defined
