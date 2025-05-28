@@ -10,7 +10,7 @@
       "build_plugins": [
         {
           "artifactId": "maven-compiler-plugin",
-          "version": "3.12.1"
+          "version": "3.12.2"
         }
       ],
       "plugin_dependencies": [],

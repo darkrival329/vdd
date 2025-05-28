@@ -1,10 +1,19 @@
 ---
-# tasks/main.yml – robust pom.xml updater (no "track old" checks)
+# tasks/main.yml – robust pom.xml updater with FQCN & schema validation
 # -----------------------------------------------------------------------------
-# 1. Guardrail: ensure required keys exist in dependency_config.json
-# -----------------------------------------------------------------------------
+
+- name: Assert config entries are well-formed
+  ansible.builtin.assert:
+    that:
+      - item.artifactId is defined
+      - item.version is defined
+    fail_msg: "Malformed config entry: {{ item }}"
+  loop: "{{ (global.dependencies | default([])) +
+            (global.build_plugins | default([])) +
+            (global.plugin_dependencies | default([])) }}"
+
 - name: Validate required variables
-  fail:
+  ansible.builtin.fail:
     msg: "{{ item }} is not defined in dependency_config.json"
   when: "{{ item }} is not defined"
   loop:
@@ -15,22 +24,16 @@
     - global.release_version
     - global.release_date
 
-# -----------------------------------------------------------------------------
-# 2. Verify pom.xml exists in the working directory
-# -----------------------------------------------------------------------------
 - name: Assert pom.xml exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ pom_file }}"
   register: pom_stat
 
 - name: Abort if pom.xml is missing
-  fail:
+  ansible.builtin.fail:
     msg: "{{ pom_file }} does not exist"
   when: not pom_stat.stat.exists
 
-# -----------------------------------------------------------------------------
-# 3. Update <properties> values
-# -----------------------------------------------------------------------------
 - name: Update Maven properties from config
   community.general.xml:
     path: "{{ pom_file }}"
@@ -42,9 +45,6 @@
   loop: "{{ global.properties | dict2items }}"
   when: global.properties is defined
 
-# -----------------------------------------------------------------------------
-# 4. Update top‑level <dependencies>
-# -----------------------------------------------------------------------------
 - name: Update dependency versions in pom.xml
   community.general.xml:
     path: "{{ pom_file }}"
@@ -54,15 +54,17 @@
     value: "{{ item.version }}"
     pretty_print: true
   loop: "{{ global.dependencies }}"
-  when:
-    - global.dependencies is defined
-    - item.artifactId is defined
-    - item.version is defined
-  ignore_errors: true
+  when: global.dependencies is defined
+  register: result_dependencies
 
-# -----------------------------------------------------------------------------
-# 5. Update top‑level <build><plugins>
-# -----------------------------------------------------------------------------
+- name: Warn on failed dependency updates
+  ansible.builtin.debug:
+    msg: "Warning: failed to update dependency {{ item.item.artifactId }}"
+  loop: "{{ result_dependencies.results }}"
+  loop_control:
+    label: "{{ item.item.artifactId }}"
+  when: item.failed
+
 - name: Update build plugin versions in pom.xml
   community.general.xml:
     path: "{{ pom_file }}"
@@ -72,15 +74,18 @@
     value: "{{ item.version }}"
     pretty_print: true
   loop: "{{ global.build_plugins }}"
-  when:
-    - global.build_plugins is defined
-    - item.artifactId is defined
-    - item.version is defined
+  when: global.build_plugins is defined
+  register: result_plugins
 
-# -----------------------------------------------------------------------------
-# 6. Update <plugin><dependencies> nested inside plugins
-# -----------------------------------------------------------------------------
-- name: Update plugin‑scoped dependency versions
+- name: Warn on failed plugin updates
+  ansible.builtin.debug:
+    msg: "Warning: failed to update plugin {{ item.item.artifactId }}"
+  loop: "{{ result_plugins.results }}"
+  loop_control:
+    label: "{{ item.item.artifactId }}"
+  when: item.failed
+
+- name: Update plugin-scoped dependency versions
   community.general.xml:
     path: "{{ pom_file }}"
     xpath: "//pom:plugin[pom:artifactId='{{ item.pluginArtifactId }}']//pom:dependency[pom:artifactId='{{ item.artifactId }}']/pom:version"
@@ -89,66 +94,68 @@
     value: "{{ item.version }}"
     pretty_print: true
   loop: "{{ global.plugin_dependencies }}"
-  when:
-    - global.plugin_dependencies is defined
-    - item.pluginArtifactId is defined
-    - item.artifactId is defined
-    - item.version is defined
+  when: global.plugin_dependencies is defined
+  register: result_plugin_deps
 
-# -----------------------------------------------------------------------------
-# 7. Generate / update CHANGELOG
-# -----------------------------------------------------------------------------
+- name: Warn on failed plugin-scoped dependency updates
+  ansible.builtin.debug:
+    msg: "Warning: failed to update plugin dependency {{ item.item.pluginArtifactId }} -> {{ item.item.artifactId }}"
+  loop: "{{ result_plugin_deps.results }}"
+  loop_control:
+    label: "{{ item.item.artifactId }}"
+  when: item.failed
+
 - name: Set default changelog path
-  set_fact:
+  ansible.builtin.set_fact:
     changelog_path: "{{ changelog_path | default('CHANGELOG.md') }}"
 
 - name: Check if changelog exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ changelog_path }}"
   register: changelog_stat
 
 - name: Ensure changelog directory exists
-  file:
+  ansible.builtin.file:
     path: "{{ changelog_path | dirname }}"
     state: directory
-  when: changelog_path | dirname != '.' and changelog_path | dirname != ''
+  when: (changelog_path | dirname) not in ['', '.']
 
 - name: Read existing changelog content
-  slurp:
+  ansible.builtin.slurp:
     path: "{{ changelog_path }}"
   register: changelog_content
   when: changelog_stat.stat.exists
 
 - name: Generate new changelog entry
-  template:
+  ansible.builtin.template:
     src: changelog_entry.md.j2
     dest: "{{ playbook_dir }}/.changelog_entry.md"
   register: new_entry_file
   when:
     - global.release_version is defined
     - global.release_date is defined
-    - not changelog_stat.stat.exists or 
-      (changelog_stat.stat.exists and 
-       global.release_version not in changelog_content.content | b64decode)
+    - not changelog_stat.stat.exists or
+      (changelog_stat.stat.exists and
+       global.release_version not in (changelog_content.content | b64decode))
 
 - name: Read new changelog entry
-  slurp:
+  ansible.builtin.slurp:
     path: "{{ playbook_dir }}/.changelog_entry.md"
   register: new_entry_content
-  when: new_entry_file is changed
+  when: new_entry_file.changed
 
 - name: Set new entry fact
-  set_fact:
+  ansible.builtin.set_fact:
     new_entry: "{{ new_entry_content.content | b64decode }}"
-  when: new_entry_file is changed
+  when: new_entry_file.changed
 
 - name: Debug new changelog entry
-  debug:
+  ansible.builtin.debug:
     msg: "{{ new_entry }}"
   when: debug_mode | bool and new_entry is defined
 
 - name: Render changelog
-  template:
+  ansible.builtin.template:
     src: changelog.md.j2
     dest: "{{ changelog_path }}"
     force: yes
@@ -157,11 +164,11 @@
     - global.release_date is defined
 
 - name: Clean up temporary changelog entry
-  file:
+  ansible.builtin.file:
     path: "{{ playbook_dir }}/.changelog_entry.md"
     state: absent
-  when: new_entry_file is changed
+  when: new_entry_file.changed
 
-# -----------------------------------------------------------------------------
-# End of tasks
-...
+- name: Show overall change status
+  ansible.builtin.debug:
+    msg: "Tasks completed. Inspect git diff for changes."
