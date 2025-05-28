@@ -16,10 +16,10 @@
         },
         {
           "name": "pytest",
-          "version": "8.0.0"
+          "version": "8.0.1"
         }
       ],
-      "release_version": "1.0.0",
+      "release_version": "1.0.2",
       "release_date": "2024-03-20"
     }
   }
