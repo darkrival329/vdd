@@ -7,13 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.2] - 2024-03-20
 
-### Python Package Updates
-- Updated requests to version 2.31.0
-- Updated pandas to version 2.2.1
-- Updated numpy to version 2.0.0
-- Updated pytest to version 8.0.1
+### Summary
+- Updated 1 build plugins
+- Updated 2 properties
 
-- Updated Python version to 3.11.0
- 
+
+### Build Plugins
+- Updated `maven-compiler-plugin` to version `3.12.1`
+
+### Properties
+- Updated `maven.compiler.source` to `17`
+- Updated `maven.compiler.target` to `17`
+
+[1.0.2]: /-/compare/v1.0.2...HEAD 
 
  

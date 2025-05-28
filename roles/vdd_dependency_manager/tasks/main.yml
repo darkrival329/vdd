@@ -1,4 +1,8 @@
 ---
+# tasks/main.yml – robust pom.xml updater (no "track old" checks)
+# -----------------------------------------------------------------------------
+# 1. Guardrail: ensure required keys exist in dependency_config.json
+# -----------------------------------------------------------------------------
 - name: Validate required variables
   fail:
     msg: "{{ item }} is not defined in dependency_config.json"
@@ -7,38 +11,27 @@
     - global.properties
     - global.dependencies
     - global.build_plugins
+    - global.plugin_dependencies
     - global.release_version
     - global.release_date
 
-- name: Fail if pom.xml does not exist
+# -----------------------------------------------------------------------------
+# 2. Verify pom.xml exists in the working directory
+# -----------------------------------------------------------------------------
+- name: Assert pom.xml exists
   stat:
     path: "{{ pom_file }}"
   register: pom_stat
 
-- name: Abort if pom.xml does not exist
+- name: Abort if pom.xml is missing
   fail:
     msg: "{{ pom_file }} does not exist"
   when: not pom_stat.stat.exists
 
-- name: Check current property values
-  community.general.xml:
-    path: "{{ pom_file }}"
-    xpath: "//pom:properties/pom:{{ item.key }}"
-    namespaces:
-      pom: "{{ pom_ns }}"
-  register: current_properties
-  loop: "{{ global.properties | dict2items }}"
-  when: global.properties is defined
-
-- name: Debug property changes
-  debug:
-    msg: "Updating property {{ item.key }} from {{ current_properties.results[loop_index].value | default('not set') }} to {{ item.value }} in pom.xml"
-  loop: "{{ global.properties | dict2items }}"
-  loop_control:
-    index_var: loop_index
-  when: debug_mode | bool and global.properties is defined
-
-- name: Update properties in pom.xml from config
+# -----------------------------------------------------------------------------
+# 3. Update <properties> values
+# -----------------------------------------------------------------------------
+- name: Update Maven properties from config
   community.general.xml:
     path: "{{ pom_file }}"
     xpath: "//pom:properties/pom:{{ item.key }}"
@@ -47,33 +40,11 @@
     value: "{{ item.value }}"
     pretty_print: true
   loop: "{{ global.properties | dict2items }}"
-  when:
-    - global.properties is defined
-    - current_properties.results[loop_index].value is defined and current_properties.results[loop_index].value != item.value or current_properties.results[loop_index].value is not defined
-  loop_control:
-    index_var: loop_index
+  when: global.properties is defined
 
-- name: Check current dependency versions
-  community.general.xml:
-    path: "{{ pom_file }}"
-    xpath: "//pom:dependency[pom:artifactId='{{ item.artifactId }}']/pom:version"
-    namespaces:
-      pom: "{{ pom_ns }}"
-  register: current_dependencies
-  loop: "{{ global.dependencies }}"
-  when:
-    - global.dependencies is defined
-    - item.artifactId is defined
-    - item.version is defined
-
-- name: Debug dependency changes
-  debug:
-    msg: "Updating dependency {{ item.artifactId }} from {{ current_dependencies.results[loop_index].value | default('not set') }} to {{ item.version }} in pom.xml"
-  loop: "{{ global.dependencies }}"
-  loop_control:
-    index_var: loop_index
-  when: debug_mode | bool and global.dependencies is defined and item.artifactId is defined and item.version is defined
-
+# -----------------------------------------------------------------------------
+# 4. Update top‑level <dependencies>
+# -----------------------------------------------------------------------------
 - name: Update dependency versions in pom.xml
   community.general.xml:
     path: "{{ pom_file }}"
@@ -87,31 +58,11 @@
     - global.dependencies is defined
     - item.artifactId is defined
     - item.version is defined
-    - current_dependencies.results[loop_index].value is defined and current_dependencies.results[loop_index].value != item.version or current_dependencies.results[loop_index].value is not defined
-  loop_control:
-    index_var: loop_index
+  ignore_errors: true
 
-- name: Check current plugin versions
-  community.general.xml:
-    path: "{{ pom_file }}"
-    xpath: "//pom:plugin[pom:artifactId='{{ item.artifactId }}']/pom:version"
-    namespaces:
-      pom: "{{ pom_ns }}"
-  register: current_plugins
-  loop: "{{ global.build_plugins }}"
-  when:
-    - global.build_plugins is defined
-    - item.artifactId is defined
-    - item.version is defined
-
-- name: Debug plugin changes
-  debug:
-    msg: "Updating plugin {{ item.artifactId }} from {{ current_plugins.results[loop_index].value | default('not set') }} to {{ item.version }} in pom.xml"
-  loop: "{{ global.build_plugins }}"
-  loop_control:
-    index_var: loop_index
-  when: debug_mode | bool and global.build_plugins is defined and item.artifactId is defined and item.version is defined
-
+# -----------------------------------------------------------------------------
+# 5. Update top‑level <build><plugins>
+# -----------------------------------------------------------------------------
 - name: Update build plugin versions in pom.xml
   community.general.xml:
     path: "{{ pom_file }}"
@@ -125,23 +76,44 @@
     - global.build_plugins is defined
     - item.artifactId is defined
     - item.version is defined
-    - current_plugins.results[loop_index].value is defined and current_plugins.results[loop_index].value != item.version or current_plugins.results[loop_index].value is not defined
-  loop_control:
-    index_var: loop_index
 
-- name: Check for existing changelog entry
+# -----------------------------------------------------------------------------
+# 6. Update <plugin><dependencies> nested inside plugins
+# -----------------------------------------------------------------------------
+- name: Update plugin‑scoped dependency versions
+  community.general.xml:
+    path: "{{ pom_file }}"
+    xpath: "//pom:plugin[pom:artifactId='{{ item.pluginArtifactId }}']//pom:dependency[pom:artifactId='{{ item.artifactId }}']/pom:version"
+    namespaces:
+      pom: "{{ pom_ns }}"
+    value: "{{ item.version }}"
+    pretty_print: true
+  loop: "{{ global.plugin_dependencies }}"
+  when:
+    - global.plugin_dependencies is defined
+    - item.pluginArtifactId is defined
+    - item.artifactId is defined
+    - item.version is defined
+
+# -----------------------------------------------------------------------------
+# 7. Generate / update CHANGELOG
+# -----------------------------------------------------------------------------
+- name: Set default changelog path
+  set_fact:
+    changelog_path: "{{ changelog_path | default('CHANGELOG.md') }}"
+
+- name: Check if changelog exists
   stat:
     path: "{{ changelog_path }}"
   register: changelog_stat
 
-- name: Backup existing changelog
-  copy:
-    src: "{{ changelog_path }}"
-    dest: "{{ changelog_path }}.bak"
-    remote_src: yes
-  when: changelog_stat.stat.exists
+- name: Ensure changelog directory exists
+  file:
+    path: "{{ changelog_path | dirname }}"
+    state: directory
+  when: changelog_path | dirname != '.' and changelog_path | dirname != ''
 
-- name: Read existing changelog
+- name: Read existing changelog content
   slurp:
     path: "{{ changelog_path }}"
   register: changelog_content
@@ -175,7 +147,7 @@
     msg: "{{ new_entry }}"
   when: debug_mode | bool and new_entry is defined
 
-- name: Create or update changelog
+- name: Render changelog
   template:
     src: changelog.md.j2
     dest: "{{ changelog_path }}"
@@ -188,4 +160,8 @@
   file:
     path: "{{ playbook_dir }}/.changelog_entry.md"
     state: absent
-  when: new_entry_file is changed 
+  when: new_entry_file is changed
+
+# -----------------------------------------------------------------------------
+# End of tasks
+...

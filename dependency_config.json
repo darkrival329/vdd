@@ -1,25 +1,20 @@
 {
     "global": {
-      "python_version": "3.11.0",
+      "properties": {
+        "maven.compiler.source": "17",
+        "maven.compiler.target": "17"
+      },
       "dependencies": [
+       
+      ],
+      "build_plugins": [
         {
-          "name": "requests",
-          "version": "2.31.0"
-        },
-        {
-          "name": "pandas",
-          "version": "2.2.1"
-        },
-        {
-          "name": "numpy",
-          "version": "2.0.0"
-        },
-        {
-          "name": "pytest",
-          "version": "8.0.1"
+          "artifactId": "maven-compiler-plugin",
+          "version": "3.12.1"
         }
       ],
+      "plugin_dependencies": [],
       "release_version": "1.0.2",
       "release_date": "2024-03-20"
     }
-  }
+}
