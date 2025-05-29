@@ -1,0 +1,5 @@
+## {{ config_global.release_version }} — {{ config_global.release_date }}
+
+{% for pkg in updated_packages %}
+* Updated: {{ pkg.name }} ({{ pkg.old_version }} → {{ pkg.new_version }})
+{% endfor %}

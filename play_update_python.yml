@@ -1,0 +1,14 @@
+---
+- name: Update Python dependencies using centralized config
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - dependency_config.json
+
+  vars:
+    requirements_file: "./requirements.txt"
+    changelog_path: "./CHANGELOG.md"
+    debug_mode: true
+
+  roles:
+    - role: vdd_pip_manager

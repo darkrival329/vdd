@@ -1,106 +1,50 @@
 ---
-- name: Validate required variables
-  fail:
-    msg: "{{ item }} is not defined in dependency_config.json"
-  when: "{{ item }} is not defined"
-  loop:
-    - config_global.python_version
-    - config_global.dependencies
-    - config_global.release_version
-    - config_global.release_date
+# roles/vdd_pip_manager/tasks/main.yml
 
-- name: Check if requirements.txt exists
-  stat:
-    path: "{{ requirements_file | default('requirements.txt') }}"
-  register: requirements_stat
+- name: "1. Validate required inputs"
+  assert:
+    that:
+      - config_global.python_dependencies is defined
+      - config_global.release_version    is defined
+      - config_global.release_date       is defined
+    fail_msg: "Missing required key(s) in dependency_config.json"
 
-- name: Create requirements.txt if it doesn't exist
+- name: "2. Ensure requirements.txt exists"
   file:
-    path: "{{ requirements_file | default('requirements.txt') }}"
+    path: "{{ requirements_file }}"
     state: touch
-  when: not requirements_stat.stat.exists
 
-- name: Read current requirements
-  slurp:
-    path: "{{ requirements_file | default('requirements.txt') }}"
-  register: current_requirements
-  when: requirements_stat.stat.exists
+- name: "3. Update each dependency in requirements.txt"
+  replace:
+    path: "{{ requirements_file }}"
+    regexp: '^({{ item.name }})==.*$'
+    replace: '\1=={{ item.version }}'
+    backup: false
+  loop: "{{ config_global.python_dependencies }}"
+  register: replace_results
 
-- name: Parse current requirements
+- name: "4. Build list of actually updated packages"
   set_fact:
-    current_packages: "{{ current_requirements.content | b64decode | regex_findall('^([^=<>]+)([=<>].*)?$', multiline=True) | map('regex_replace', '^([^=<>]+)([=<>].*)?$', '\\1') | list }}"
-  when: requirements_stat.stat.exists
+    updated_packages: >-
+      {{ replace_results.results
+         | selectattr('changed') 
+         | map(attribute='item') 
+         | list
+      }}
 
-- name: Debug package changes
+- name: "5. DEBUG: show which packages changed"
   debug:
-    msg: "Updating package {{ item.name }} from {{ current_packages | select('search', item.name) | first | default('not set') }} to {{ item.version }} in requirements.txt"
-  loop: "{{ config_global.dependencies }}"
-  when: debug_mode | bool and config_global.dependencies is defined
+    var: updated_packages
+  when: debug_mode
 
-- name: Update requirements.txt
-  template:
-    src: requirements.txt.j2
-    dest: "{{ requirements_file | default('requirements.txt') }}"
-    force: yes
-  when: config_global.dependencies is defined
-
-- name: Check for existing changelog entry
-  stat:
+- name: "6. Prepend changelog entry"
+  blockinfile:
     path: "{{ changelog_path }}"
-  register: changelog_stat
-
-- name: Backup existing changelog
-  copy:
-    src: "{{ changelog_path }}"
-    dest: "{{ changelog_path }}.bak"
-    remote_src: yes
-  when: changelog_stat.stat.exists
-
-- name: Read existing changelog
-  slurp:
-    path: "{{ changelog_path }}"
-  register: changelog_content
-  when: changelog_stat.stat.exists
-
-- name: Generate new changelog entry
-  template:
-    src: changelog_entry.md.j2
-    dest: "{{ playbook_dir }}/.changelog_entry.md"
-  register: new_entry_file
-  when:
-    - config_global.release_version is defined
-    - config_global.release_date is defined
-    - not changelog_stat.stat.exists or 
-      (changelog_stat.stat.exists and 
-       config_global.release_version not in changelog_content.content | b64decode)
-
-- name: Read new changelog entry
-  slurp:
-    path: "{{ playbook_dir }}/.changelog_entry.md"
-  register: new_entry_content
-  when: new_entry_file is changed
-
-- name: Set new entry fact
-  set_fact:
-    new_entry: "{{ new_entry_content.content | b64decode }}"
-  when: new_entry_file is changed
-
-- name: Debug new changelog entry
-  debug:
-    msg: "{{ new_entry }}"
-  when: debug_mode | bool and new_entry is defined
-
-- name: Create or update changelog
-  template:
-    src: changelog.md.j2
-    dest: "{{ changelog_path }}"
-    force: yes
-  when:
-    - config_global.release_version is defined
-    - config_global.release_date is defined
-
-- name: Clean up temporary changelog entry
-  file:
-    path: "{{ playbook_dir }}/.changelog_entry.md"
-    state: absent
-  when: new_entry_file is changed 
+    insertafter: BOF
+    backup: false
+    block: |
+      ## {{ config_global.release_version }} — {{ config_global.release_date }}
+      {% for pkg in updated_packages %}
+      * Updated: {{ pkg.name }} → {{ pkg.version }}
+      {% endfor %}
+  when: updated_packages | length > 0

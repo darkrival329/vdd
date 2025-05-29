@@ -1,7 +1,4 @@
-python==3.11.0
-
-requests==2.31.0
-pandas==2.2.1
-numpy==2.0.0
-pytest==8.0.1
- 
+numpy==1.27.4
+zack==1.31.1
+pandas==2.3.1
+requests==2.31.1
