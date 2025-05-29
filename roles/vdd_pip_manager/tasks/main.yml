@@ -40,6 +40,7 @@
 - name: "6. Prepend changelog entry"
   blockinfile:
     path: "{{ changelog_path }}"
+    create: yes             # ← will create the file if it doesn’t exist
     insertafter: BOF
     backup: false
     block: |
