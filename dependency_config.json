@@ -1,11 +1,11 @@
 {
     "config_global": {
-      "release_version": "3.3.3",
+      "release_version": "4.3.4",
       "release_date": "2025-05-28",
       "python_dependencies": [
-        { "name": "numpy", "version": "2.27.8" },
-        { "name": "pandas", "version": "2.2.2" },
-        { "name": "requests", "version": "3.31.0"},
+        { "name": "numpy", "version": "2.27.10" },
+        { "name": "pandas", "version": "2.3.1" },
+        { "name": "requests", "version": "3.31.2"},
         { "name": "zack", "version": "1.31.1" }
       ]
     }

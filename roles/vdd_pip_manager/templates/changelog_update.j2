@@ -1,0 +1,28 @@
+{# Split the existing file into [before Unreleased, after Unreleased] #}
+{% set parts = existing_changelog.split('## [Unreleased]') %}
+
+{# 1) Header + Unreleased #}
+{% if parts[0] == '' %}
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [Unreleased]
+{% else %}
+{{ parts[0].rstrip() }}
+## [Unreleased]
+{% endif %}
+
+{# 2) New release block #}
+## [{{ config_global.release_version }}] - {{ config_global.release_date }}
+{% if changed_dependencies %}
+### Changed
+{% for pkg in changed_dependencies %}
+- Updated: {{ pkg.name }} → {{ pkg.version }}
+{% endfor %}
+{% else %}
+*(no changes detected)*
+{% endif %}
+
+{# 3) Existing releases (everything after the first “## [Unreleased]”) #}
+{{ parts[1] if parts|length > 1 else '' }}

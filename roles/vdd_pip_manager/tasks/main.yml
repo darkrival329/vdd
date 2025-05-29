@@ -1,4 +1,6 @@
 ---
+# roles/vdd_pip_manager/tasks/main.yml
+
 - name: "1. Validate required inputs"
   assert:
     that:
@@ -12,10 +14,10 @@
     path: "{{ requirements_file }}"
     state: touch
 
-- name: "3. Update each dependency in requirements.txt"
+- name: "3. Update each approved dependency (in-place)"
   replace:
     path: "{{ requirements_file }}"
-    regexp: '^({{ item.name }})==.*$'
+    regexp: '^({{ item.name | regex_escape }})==.*$'
     replace: '\1=={{ item.version }}'
     backup: false
   loop: "{{ config_global.python_dependencies }}"
@@ -23,55 +25,22 @@
 
 - name: "4. Build list of actually updated packages"
   set_fact:
-    updated_packages: >-
+    changed_dependencies: >-
       {{ replace_results.results
          | selectattr('changed')
          | map(attribute='item')
          | list
       }}
 
-- name: "5. DEBUG: show which packages changed"
+- name: "5. DEBUG: which dependencies actually changed?"
   debug:
-    var: updated_packages
+    var: changed_dependencies
   when: debug_mode
 
-- name: "6. Stat CHANGELOG.md"
-  stat:
-    path: "{{ changelog_path }}"
-  register: changelog_stat
-
-- name: "7. Create skeleton CHANGELOG.md if missing"
-  copy:
+- name: "6. Re-render full CHANGELOG.md from template"
+  template:
+    src: changelog_update.j2
     dest: "{{ changelog_path }}"
-    backup: false
-    content: |
-      # Changelog
-
-      All notable changes to this project will be documented in this file.
-
-      ## [Unreleased]
-  when: not changelog_stat.stat.exists
-
-- name: "8. Cleanup stray single‐marker lines from previous attempts"
-  replace:
-    path: "{{ changelog_path }}"
-    regexp: '^(?:<!-- changelog {{ config_global.release_version }} -->\s*)$'
-    replace: ''
-  when: updated_packages | length > 0
-
-- name: "9. Add or update release section under Unreleased (idempotent per version)"
-  blockinfile:
-    path: "{{ changelog_path }}"
-    create: yes
-    insertafter: '^## \[Unreleased\]'
-    marker_begin: "<!-- CHANGELOG:{{ config_global.release_version }}:BEGIN -->"
-    marker_end:   "<!-- CHANGELOG:{{ config_global.release_version }}:END -->"
-    block: |
-      ## [{{ config_global.release_version }}] - {{ config_global.release_date }}
-      {% if updated_packages %}
-      ### Changed
-      {% for pkg in updated_packages %}
-      - Updated: {{ pkg.name }} → {{ pkg.version }}
-      {% endfor %}
-      {% endif %}
-  when: updated_packages | length > 0
+    backup: yes
+  vars:
+    existing_changelog: "{{ lookup('file', changelog_path, errors='ignore') | default('') }}"

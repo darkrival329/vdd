@@ -1,7 +1,7 @@
 # Core data & HTTP
-numpy==2.27.8
-pandas==2.2.2
-requests==3.31.0
+numpy==2.27.10
+pandas==2.3.1
+requests==3.31.2
 hello==1.1.0
 
 # Scientific & ML
@@ -46,3 +46,4 @@ psutil==5.9.5
 # Servers & deployment
 gunicorn==20.1.0
 tqdm==4.66.1
+zack==1.31.1
