@@ -53,11 +53,20 @@
 
   when: not changelog_stat.stat.exists
 
-- name: "8. Insert release version header"
-  lineinfile:
+- name: "Add release section under Unreleased (idempotent per version)"
+  blockinfile:
     path: "{{ changelog_path }}"
+    create: yes
     insertafter: '^## \[Unreleased\]'
-    line: '## [{{ config_global.release_version }}] - {{ config_global.release_date }}'
+    marker: "<!-- changelog {{ config_global.release_version }} -->"
+    block: |
+      ## [{{ config_global.release_version }}] - {{ config_global.release_date }}
+      {% if updated_packages %}
+      ### Changed
+      {% for pkg in updated_packages %}
+      - Updated: {{ pkg.name }} → {{ pkg.version }}
+      {% endfor %}
+      {% endif %}
   when: updated_packages | length > 0
 
 - name: "9. Insert '### Changed' section header"
