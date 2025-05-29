@@ -1,6 +1,4 @@
 ---
-# roles/vdd_pip_manager/tasks/main.yml
-
 - name: "1. Validate required inputs"
   assert:
     that:
@@ -27,8 +25,8 @@
   set_fact:
     updated_packages: >-
       {{ replace_results.results
-         | selectattr('changed') 
-         | map(attribute='item') 
+         | selectattr('changed')
+         | map(attribute='item')
          | list
       }}
 
@@ -37,15 +35,42 @@
     var: updated_packages
   when: debug_mode
 
-- name: "6. Prepend changelog entry"
-  blockinfile:
+- name: "6. Stat CHANGELOG.md"
+  stat:
     path: "{{ changelog_path }}"
-    create: yes             # ← will create the file if it doesn’t exist
-    insertafter: BOF
+  register: changelog_stat
+
+- name: "7. Create skeleton CHANGELOG.md if missing"
+  copy:
+    dest: "{{ changelog_path }}"
     backup: false
-    block: |
-      ## {{ config_global.release_version }} — {{ config_global.release_date }}
-      {% for pkg in updated_packages %}
-      * Updated: {{ pkg.name }} → {{ pkg.version }}
-      {% endfor %}
+    content: |
+      # Changelog
+
+      All notable changes to this project will be documented in this file.
+
+      ## [Unreleased]
+
+  when: not changelog_stat.stat.exists
+
+- name: "8. Insert release version header"
+  lineinfile:
+    path: "{{ changelog_path }}"
+    insertafter: '^## \[Unreleased\]'
+    line: '## [{{ config_global.release_version }}] - {{ config_global.release_date }}'
+  when: updated_packages | length > 0
+
+- name: "9. Insert '### Changed' section header"
+  lineinfile:
+    path: "{{ changelog_path }}"
+    insertafter: '^## \[{{ config_global.release_version }}\]'
+    line: '### Changed'
+  when: updated_packages | length > 0
+
+- name: "10. Insert change bullets"
+  lineinfile:
+    path: "{{ changelog_path }}"
+    insertafter: '^### Changed$'
+    line: '- Updated: {{ item.name }} → {{ item.version }}'
+  loop: "{{ updated_packages | reverse }}"
   when: updated_packages | length > 0
