@@ -41,6 +41,6 @@
   template:
     src: changelog_update.j2
     dest: "{{ changelog_path }}"
-    backup: yes
+    # backup: yes
   vars:
     existing_changelog: "{{ lookup('file', changelog_path, errors='ignore') | default('') }}"

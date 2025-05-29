@@ -1,15 +1,21 @@
-{# Split the existing file into [before Unreleased, after Unreleased] #}
-{% set parts = existing_changelog.split('## [Unreleased]') %}
+{# Split at the “Unreleased” marker #}
+{%- set parts = existing_changelog.split('## [Unreleased]') -%}
+{%- set header = parts[0] -%}
+{%- set tail  = parts|length > 1 and parts[1] or '' -%}
+
+{# Remove any prior block for this exact release_version #}
+{%- set pattern    = '(?sm)^## \\[' ~ config_global.release_version ~ '\\].*?(?=^## \\[|$)' -%}
+{%- set tail_clean = tail | regex_replace(pattern, '') -%}
 
 {# 1) Header + Unreleased #}
-{% if parts[0] == '' %}
+{% if header == '' %}
 # Changelog
 
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 {% else %}
-{{ parts[0].rstrip() }}
+{{ header.rstrip() }}
 ## [Unreleased]
 {% endif %}
 
@@ -24,5 +30,5 @@ All notable changes to this project will be documented in this file.
 *(no changes detected)*
 {% endif %}
 
-{# 3) Existing releases (everything after the first “## [Unreleased]”) #}
-{{ parts[1] if parts|length > 1 else '' }}
+{# 3) The rest (all older releases, minus the removed duplicate) #}
+{{ tail_clean }}
