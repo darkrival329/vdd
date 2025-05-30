@@ -2,8 +2,9 @@ config:
   release_version: 1.0.0
   release_date: 2025-05-30
   properties:
-    maven.compiler.source: 17
-    maven.compiler.target: 17
+    maven.compiler.source: 18
+    maven.compiler.target: 20
+
   dependencies:
     - name: vdd
       version: 1.0.0

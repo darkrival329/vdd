@@ -14,7 +14,28 @@
     path: "{{ pom_file }}"
     state: file
 
-- name: "3. Extract groupId from pom.xml"
+- name: "3. Validate pom.xml structure"
+  ansible.builtin.command: xmllint --noout "{{ pom_file }}"
+  changed_when: false
+  register: xmllint_result
+  failed_when: xmllint_result.rc != 0
+  ignore_errors: true
+  when: pom_file is defined
+
+- name: "4. Fail if pom.xml is invalid"
+  ansible.builtin.fail:
+    msg: "Invalid pom.xml: {{ xmllint_result.stderr }}"
+  when: xmllint_result.rc != 0
+
+- name: "5. Ensure properties section exists in pom.xml"
+  community.general.xml:
+    path: "{{ pom_file }}"
+    xpath: "/m:project/m:properties"
+    namespaces: "{{ pom_namespace }}"
+    state: present
+  when: pom_file is defined
+
+- name: "6. Extract groupId from pom.xml"
   community.general.xml:
     path: "{{ pom_file }}"
     xpath: "/m:project/m:groupId"
@@ -22,7 +43,7 @@
     namespaces: "{{ pom_namespace }}"
   register: groupId_result
 
-- name: "4. Extract artifactId from pom.xml"
+- name: "7. Extract artifactId from pom.xml"
   community.general.xml:
     path: "{{ pom_file }}"
     xpath: "/m:project/m:artifactId"
@@ -30,7 +51,7 @@
     namespaces: "{{ pom_namespace }}"
   register: artifactId_result
 
-- name: "5. Extract version from pom.xml"
+- name: "8. Extract version from pom.xml"
   community.general.xml:
     path: "{{ pom_file }}"
     xpath: "/m:project/m:version"
@@ -38,26 +59,68 @@
     namespaces: "{{ pom_namespace }}"
   register: version_result
 
-- name: "6. Set project metadata facts"
+- name: "9. Set project metadata facts"
   ansible.builtin.set_fact:
     project_group_id: "{{ groupId_result.matches[0] | default('') }}"
     project_artifact_id: "{{ artifactId_result.matches[0] | default('') }}"
     project_version: "{{ version_result.matches[0] | default('') }}"
 
-- name: "7. Show extracted project metadata"
+- name: "10. Show extracted project metadata"
   ansible.builtin.debug:
     msg:
       - "Group ID: {{ project_group_id }}"
       - "Artifact ID: {{ project_artifact_id }}"
       - "Version: {{ project_version }}"
 
-- name: "8. Check if pom properties exist"
+- name: "11. Debug input properties"
+  ansible.builtin.debug:
+    msg: "Input properties to update: {{ config.properties | dict2items }}"
+
+- name: "12. Check if pom properties exist"
   community.general.xml:
     path: "{{ pom_file }}"
-    xpath: "/m:project/m:properties/m:*[name() = '{{ item.key }}']"
+    xpath: "/m:project/m:properties/m:{{ item.key }}"
     namespaces: "{{ pom_namespace }}"
-    count: yes
+    content: text
   loop: "{{ config.properties | dict2items }}"
   loop_control:
     label: "{{ item.key }}"
   register: property_check_results
+  failed_when: false
+
+- name: "13. Debug property check results"
+  ansible.builtin.debug:
+    msg: >-
+      Property {{ item.item.key }}: {% if item.matches is defined and item.matches %}
+      Found with value {{ item.matches[0] }}{% else %}Not found{% endif %}
+  loop: "{{ property_check_results.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+
+- name: "14. Create list of existing properties"
+  ansible.builtin.set_fact:
+    existing_property_keys: >-
+      {{
+        property_check_results.results
+        | selectattr('matches', 'defined')
+        | rejectattr('matches', 'equalto', [])
+        | map(attribute='item.key')
+        | list
+      }}
+
+
+- name: "15. Debug existing property keys"
+  ansible.builtin.debug:
+    msg: "Existing properties in pom.xml: {{ existing_property_keys }}"
+
+- name: "16. Update existing properties in pom.xml"
+  community.general.xml:
+    path: "{{ pom_file }}"
+    xpath: "/m:project/m:properties/m:{{ item.key }}"
+    namespaces: "{{ pom_namespace }}"
+    value: "{{ item.value }}"
+  loop: "{{ (config.properties | dict2items) | selectattr('key', 'in', existing_property_keys) | list }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: update_result
+  changed_when: update_result.changed
