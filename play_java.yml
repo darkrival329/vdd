@@ -1,0 +1,9 @@
+- name: Update POM file with VDD
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - vdd.yml
+  vars:
+    debug_mode: false
+  roles:
+    - vdd_java

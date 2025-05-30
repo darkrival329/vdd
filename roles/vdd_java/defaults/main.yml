@@ -1,0 +1,5 @@
+pom_file: "{{ lookup('env', 'PWD') }}/pom.xml"
+swap_file: "./vdd.yml"
+
+pom_namespace:
+  m: "http://maven.apache.org/POM/4.0.0"

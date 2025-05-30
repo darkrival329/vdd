@@ -1,0 +1,63 @@
+---
+# roles/vdd_java/tasks/main.yml
+
+- name: "1. Validate required inputs"
+  ansible.builtin.assert:
+    that:
+      - config.properties is defined
+      - config.release_version is defined
+      - config.release_date is defined
+    fail_msg: "Missing required key(s) in vdd.yaml under 'config'"
+
+- name: "2. Ensure pom.xml exists"
+  ansible.builtin.file:
+    path: "{{ pom_file }}"
+    state: file
+
+- name: "3. Extract groupId from pom.xml"
+  community.general.xml:
+    path: "{{ pom_file }}"
+    xpath: "/m:project/m:groupId"
+    content: text
+    namespaces: "{{ pom_namespace }}"
+  register: groupId_result
+
+- name: "4. Extract artifactId from pom.xml"
+  community.general.xml:
+    path: "{{ pom_file }}"
+    xpath: "/m:project/m:artifactId"
+    content: text
+    namespaces: "{{ pom_namespace }}"
+  register: artifactId_result
+
+- name: "5. Extract version from pom.xml"
+  community.general.xml:
+    path: "{{ pom_file }}"
+    xpath: "/m:project/m:version"
+    content: text
+    namespaces: "{{ pom_namespace }}"
+  register: version_result
+
+- name: "6. Set project metadata facts"
+  ansible.builtin.set_fact:
+    project_group_id: "{{ groupId_result.matches[0] | default('') }}"
+    project_artifact_id: "{{ artifactId_result.matches[0] | default('') }}"
+    project_version: "{{ version_result.matches[0] | default('') }}"
+
+- name: "7. Show extracted project metadata"
+  ansible.builtin.debug:
+    msg:
+      - "Group ID: {{ project_group_id }}"
+      - "Artifact ID: {{ project_artifact_id }}"
+      - "Version: {{ project_version }}"
+
+- name: "8. Check if pom properties exist"
+  community.general.xml:
+    path: "{{ pom_file }}"
+    xpath: "/m:project/m:properties/m:*[name() = '{{ item.key }}']"
+    namespaces: "{{ pom_namespace }}"
+    count: yes
+  loop: "{{ config.properties | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: property_check_results

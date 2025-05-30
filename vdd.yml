@@ -1,0 +1,12 @@
+config:
+  release_version: 1.0.0
+  release_date: 2025-05-30
+  properties:
+    maven.compiler.source: 17
+    maven.compiler.target: 17
+  dependencies:
+    - name: vdd
+      version: 1.0.0
+      scope: compile
+      type: jar
+      groupId: com.vdd
